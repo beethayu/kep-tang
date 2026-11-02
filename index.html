@@ -92,7 +92,6 @@
     .bnav button span { font-size: 21px; line-height: 1.2; filter: grayscale(1); opacity: .75; }
     .bnav button.on { color: var(--brand); font-weight: 600; }
     .bnav button.on span { filter: none; opacity: 1; }
-    .bnav .add span { width: 46px; height: 34px; border-radius: 12px; background: var(--brand); color: #fff; display: grid; place-items: center; filter: none; opacity: 1; font-size: 24px; }
 
     /* หน้าต่าง (เต็มจอ เริ่มใต้แถบสถานะ) */
     .sheet { position: fixed; left: 0; right: 0; bottom: 0; top: env(safe-area-inset-top); z-index: 2000; background: var(--ground);
@@ -167,7 +166,7 @@
 <nav class="bnav" id="bnav">
   <button data-t="home" onclick="go('home')"><span>🏠</span>หน้าแรก</button>
   <button data-t="list" onclick="go('list')"><span>📒</span>รายการ</button>
-  <button class="add" onclick="openAdd()"><span>＋</span>บันทึก</button>
+  <button class="add" onclick="openAdd()"><span>📝</span>บันทึก</button>
   <button data-t="sum" onclick="go('sum')"><span>📊</span>สรุป</button>
   <button data-t="more" onclick="go('more')"><span>⚙️</span>ตั้งค่า</button>
 </nav>
