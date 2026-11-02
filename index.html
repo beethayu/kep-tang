@@ -144,6 +144,17 @@
     .seg-dk button { color: rgba(255,255,255,.8); }
     .seg-dk button.on { background: #fff; color: var(--brand); }
     .hd-pill { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px; border-radius: 99px; background: #fff; color: var(--brand); font-weight: 600; font-size: 15px; cursor: pointer; }
+    .fcard select { flex: 1; min-width: 0; border: 0; outline: 0; height: 48px; background: transparent; text-align: right; text-align-last: right;
+      -webkit-appearance: none; appearance: none; color: var(--ink); padding: 0; }
+    .fcard .frow.chk input { flex: none; width: 24px; height: 24px; accent-color: var(--brand); }
+    .fcard .frow.chk span { width: auto; flex: 1; color: var(--ink); }
+    .fcard .frow.chk small { display: block; color: var(--muted); font-size: 12.5px; }
+    .fcard .frow .sfx { width: auto; color: var(--muted); font-size: 14px; }
+    .hscroll { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -14px; padding: 0 14px 2px; }
+    .hscroll::-webkit-scrollbar { display: none; }
+    .hscroll .chip { flex: none; white-space: nowrap; }
+    .srch { display: flex; align-items: center; gap: 8px; height: 44px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; margin: 12px 0 8px; }
+    .srch input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; height: 100%; }
     .more-btn { display: block; width: 100%; margin-top: 6px; height: 36px; color: var(--brand); font-weight: 600; font-size: 14px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .tgl { display: flex; align-items: center; gap: 10px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
@@ -158,12 +169,14 @@
       background: var(--brand); color: #fff; font-weight: 600; font-size: 15px; cursor: pointer; }
     .bigbtns label.alt, .bigbtns button.alt { background: #fff; color: var(--brand); border: 1px solid var(--line2); }
     .bigbtns span { font-size: 26px; }
-    .it { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; margin-bottom: 8px; }
-    .it .r1 { display: flex; gap: 6px; }
-    .it .r1 .inp:first-child { flex: 1; }
-    .it .r1 .inp.a { width: 110px; text-align: right; font-weight: 600; }
-    .it .r2 { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
-    .it .r2 select { flex: 1; height: 38px; }
+    .it { background: #fff; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+    .it .r1 { display: flex; align-items: center; gap: 8px; padding: 0 12px; min-height: 48px; }
+    .it .r1 input { border: 0; outline: 0; background: transparent; height: 46px; padding: 0; min-width: 0; }
+    .it .r1 input:first-child { flex: 1; }
+    .it .r1 input.a { width: 110px; text-align: right; font-weight: 700; font-size: 17px; }
+    .it .r2 { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); padding: 0 4px 0 12px; min-height: 44px; }
+    .it .r2 select { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; -webkit-appearance: none; appearance: none; color: var(--muted); font-size: 15px; height: 42px; padding: 0; }
+    .it .r2 .xbtn { background: none; }
     .xbtn { width: 38px; height: 38px; border-radius: 10px; background: var(--ground); color: var(--muted); font-size: 18px; flex: none; }
     .photo { width: 100%; max-height: 260px; object-fit: contain; background: #222; border-radius: 12px; display: block; }
 
@@ -438,12 +451,13 @@ function listHtml() {
   const byDay = {};
   groupBills(list.sort(txSort)).forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
   let h = `<div class="hd"><div class="hd-in"><div class="hd-top"><div class="hd-title">รายการ</div>${monthNav()}</div>
-    <div class="tri"><div><small>รับ</small><b>${money(s.inc)}</b></div><div><small>จ่าย</small><b>${money(s.exp)}</b></div><div><small>เหลือ</small><b>${money(s.net)}</b></div></div></div></div>
-    <div class="wrap"><div style="margin-top:12px" class="seg">${[['all', 'ทั้งหมด'], ['expense', 'จ่าย'], ['income', 'รับ'], ['transfer', 'โอน']].map(x =>
-      `<button class="${f.type === x[0] ? 'on' : ''}" onclick="listFilter.type='${x[0]}';render()">${x[1]}</button>`).join('')}</div>
-    <div class="two" style="margin-top:8px"><select class="inp" onchange="listFilter.acc=this.value;render()"><option value="">ทุกบัญชี</option>${accs(true).map(a =>
-      `<option value="${a.acc_id}" ${f.acc === a.acc_id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select>
-    <input class="inp" type="search" placeholder="🔍 ค้นหา" value="${esc(f.q)}" onchange="listFilter.q=this.value;render()"></div>
+    <div class="tri"><div><small>รับ</small><b>${money(s.inc)}</b></div><div><small>จ่าย</small><b>${money(s.exp)}</b></div><div><small>เหลือ</small><b>${money(s.net)}</b></div></div>
+    <div class="seg seg-dk" style="margin-top:10px">${[['all', 'ทั้งหมด'], ['expense', 'จ่าย'], ['income', 'รับ'], ['transfer', 'โอน']].map(x =>
+      `<button class="${f.type === x[0] ? 'on' : ''}" onclick="listFilter.type='${x[0]}';render()">${x[1]}</button>`).join('')}</div></div></div>
+    <div class="wrap"><div class="srch"><span>🔍</span><input type="search" placeholder="ค้นหารายการ ร้าน หมวด" value="${esc(f.q)}" onchange="listFilter.q=this.value;render()">
+      ${f.q ? `<button onclick="listFilter.q='';render()" class="t2">✕</button>` : ''}</div>
+    <div class="hscroll"><button class="chip ${!f.acc ? 'on' : ''}" onclick="listFilter.acc='';render()">ทุกบัญชี</button>${accs(true).map(a =>
+      `<button class="chip ${f.acc === a.acc_id ? 'on' : ''}" onclick="listFilter.acc='${a.acc_id}';render()">${(ACC_TYPE[a.type] || ACC_TYPE.other)[1]} ${esc(a.name)}</button>`).join('')}</div>
     ${f.cat ? `<div style="margin-top:8px"><span class="chip on" onclick="listFilter.cat='';render()">${esc(catOf(f.cat).icon)} ${esc(catOf(f.cat).name)} ✕</span></div>` : ''}`;
   const days = Object.keys(byDay).sort().reverse();
   if (!days.length) h += `<div class="card" style="margin-top:12px"><div class="empty">ไม่มีรายการในเดือนนี้</div></div>`;
@@ -624,6 +638,8 @@ function renderTxForm(title, isNew) {
   const x = txFormHtml(title, isNew);
   openSheet(title, x.h, x.foot);
 }
+const fr = (label, inner, cls) => `<label class="frow${cls ? ' ' + cls : ''}"><span>${label}</span>${inner}</label>`;
+const chk = (id, on, title, sub) => `<label class="frow chk"><span>${title}${sub ? `<small>${sub}</small>` : ''}</span><input type="checkbox" id="${id}" ${on ? 'checked' : ''}></label>`;
 // หมวดเรียงตามที่ใช้บ่อย (120 วันล่าสุด) โชว์ 8 อัน กด "ทั้งหมด" ดูที่เหลือ
 let catAll = false;
 function catsByUse(kind) {
@@ -747,20 +763,20 @@ function renderSlip() {
   if (S.dupe) h += `<div class="alert warn">⚠️ อาจลงซ้ำ: มีรายการ "${esc(S.dupe.item)}" ${thDate(S.dupe.date)} ${S.ref ? 'เลขอ้างอิงเดียวกัน' : 'ยอดและร้านเดียวกัน'} แล้ว</div>`;
   if (S.thumb) h += `<img class="photo" src="data:image/jpeg;base64,${S.thumb}" onclick="this.style.maxHeight=this.style.maxHeight?'':'none'">
     <p class="note" style="text-align:center;margin:4px 0 10px">แตะรูปเพื่อขยาย${S.pages && S.pages.length > 1 ? ' · ' + S.pages.length + ' รูป' : ''}</p>`;
-  h += `<div class="tgl"><input type="checkbox" id="sFarm" ${S.farm ? 'checked' : ''} onchange="readSlipForm();S.farm=this.checked;renderSlip()">
-    <label for="sFarm" class="grow"><b>🌾 ค่าไร่ (สำรองจ่าย รอเบิก)</b><div class="note">ไม่นับเป็นรายจ่ายส่วนตัว ลงเป็นโอนไป "สำรองจ่ายไร่" ยอดเดียว</div></label></div>`;
+  h += `<div class="tgl"><label for="sFarm" class="grow"><b>🌾 ค่าไร่ (สำรองจ่าย รอเบิก)</b><div class="note">ไม่นับเป็นรายจ่ายส่วนตัว ลงเป็นโอนไป "สำรองจ่ายไร่" ยอดเดียว</div></label>
+    <input type="checkbox" id="sFarm" ${S.farm ? 'checked' : ''} onchange="readSlipForm();S.farm=this.checked;renderSlip()"></div>`;
   if (!S.farm) h += `<div class="seg" style="margin-bottom:12px">${[['expense', 'รายจ่าย'], ['income', 'รายรับ (เงินเข้า)']].map(x =>
     `<button class="${ty === x[0] ? 'on' : ''}" onclick="readSlipForm();S.type='${x[0]}';S.items.forEach(i=>i.cat_id='');renderSlip()">${x[1]}</button>`).join('')}</div>`;
-  h += `<div class="two"><div class="fld"><label>วันที่</label><input class="inp" type="date" id="sDate" value="${esc(S.date)}"></div>
-    <div class="fld"><label>${ty === 'income' ? 'จาก' : 'ร้าน / ผู้รับ'}</label><input class="inp" id="sShop" value="${esc(S.shop)}"></div></div>
-    <div class="fld"><label>${ty === 'income' ? 'เข้าบัญชี' : 'จ่ายจาก'}${S.bank ? ` <span class="note">(สลิปบอก ${esc(S.bank)}${S.acct ? ' ' + esc(S.acct) : ''})</span>` : ''}</label>
-    <div class="chips">${accs().filter(a => a.type !== 'farm').map(a => `<button class="chip ${S.acc_id === a.acc_id ? 'on' : ''}" onclick="readSlipForm();S.acc_id='${a.acc_id}';renderSlip()">${(ACC_TYPE[a.type] || ACC_TYPE.other)[1]} ${esc(a.name)}</button>`).join('')}</div></div>
-    <div class="sec" style="margin-top:4px"><h3>รายการ (${S.items.length})</h3>${S.items.length > 1 ? `<a href="#" onclick="mergeSlip();return false">รวมเป็นยอดเดียว</a>` : ''}</div>`;
+  h += `<div class="card fcard" style="margin-bottom:4px">${fr('วันที่', `<input type="date" id="sDate" value="${esc(S.date)}">`)}
+    ${fr(ty === 'income' ? 'จาก' : 'ร้าน/ผู้รับ', `<input id="sShop" value="${esc(S.shop)}" placeholder="ไม่ใส่ก็ได้">`)}</div>
+    <div class="flbl">${ty === 'income' ? 'เข้าบัญชี' : 'จ่ายจาก'}${S.bank ? ` <span class="note">(สลิปบอก ${esc(S.bank)}${S.acct ? ' ' + esc(S.acct) : ''})</span>` : ''}</div>
+    <div class="chips">${accs().filter(a => a.type !== 'farm').map(a => `<button class="chip ${S.acc_id === a.acc_id ? 'on' : ''}" onclick="readSlipForm();S.acc_id='${a.acc_id}';renderSlip()">${(ACC_TYPE[a.type] || ACC_TYPE.other)[1]} ${esc(a.name)}</button>`).join('')}</div>
+    <div class="sec" style="margin-top:16px"><h3>รายการ (${S.items.length})</h3>${S.items.length > 1 ? `<a href="#" onclick="mergeSlip();return false">รวมเป็นยอดเดียว</a>` : ''}</div>`;
   const opts = cats(ty);
   S.items.forEach((it, i) => {
-    h += `<div class="it"><div class="r1"><input class="inp" id="si_n${i}" value="${esc(it.item)}" placeholder="รายการ">
-      <input class="inp a" id="si_a${i}" inputmode="decimal" value="${esc(it.amount)}" onchange="readSlipForm();renderSlip()"></div>
-      ${S.farm ? '' : `<div class="r2"><select class="inp" id="si_c${i}"><option value="">— เลือกหมวด —</option>${opts.map(c => `<option value="${c.cat_id}" ${it.cat_id === c.cat_id ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('')}</select>
+    h += `<div class="it"><div class="r1"><input id="si_n${i}" value="${esc(it.item)}" placeholder="รายการ">
+      <input class="a" id="si_a${i}" inputmode="decimal" value="${esc(it.amount)}" onchange="readSlipForm();renderSlip()"></div>
+      ${S.farm ? '' : `<div class="r2"><select id="si_c${i}"><option value="">⚠️ เลือกหมวด ▾</option>${opts.map(c => `<option value="${c.cat_id}" ${it.cat_id === c.cat_id ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('')}</select><span class="t2" style="pointer-events:none">▾</span>
       <button class="xbtn" onclick="readSlipForm();S.items.splice(${i},1);renderSlip()">✕</button></div>`}</div>`;
   });
   h += `<button class="btn full" style="margin-bottom:12px" onclick="readSlipForm();S.items.push({item:'',amount:'',cat_id:''});renderSlip()">＋ เพิ่มบรรทัด</button>`;
@@ -865,18 +881,20 @@ function openAccounts() {
 function openAccount(id) {
   const a = id ? accOf(id) : { name: '', type: 'bank', opening: 0, hint: '' };
   const b = id ? balance(id) : 0;
-  let h = `<div class="fld"><label>ชื่อบัญชี</label><input class="inp" id="aName" value="${esc(a.name)}" placeholder="เช่น กสิกร ออมทรัพย์"></div>
-    <div class="fld"><label>ประเภท</label><select class="inp" id="aType">${Object.keys(ACC_TYPE).map(k => `<option value="${k}" ${a.type === k ? 'selected' : ''}>${ACC_TYPE[k][1]} ${ACC_TYPE[k][0]}</option>`).join('')}</select></div>
-    <div class="fld"><label>ช่วย AI จับคู่สลิป (ชื่อธนาคาร / เลขท้ายบัญชี / เลขท้ายบัตร)</label><input class="inp" id="aHint" value="${esc(a.hint)}" placeholder="เช่น KBank x1234, K PLUS"></div>`;
-  if (!id) h += `<div class="fld"><label>ยอดเงินตอนนี้ (บัตรเครดิตที่ค้างจ่าย ใส่ติดลบ)</label><input class="inp" id="aOpen" inputmode="decimal" value="0"></div>`;
-  else {
-    h += `<div class="card" style="margin-bottom:12px"><div class="row"><div class="grow"><div class="t2">ยอดตามแอป</div><div class="big" style="font-size:24px">${money(b)}</div></div></div>
-      <div class="row" style="flex-wrap:wrap"><div class="grow"><div class="t1">ยอดจริงไม่ตรง?</div><div class="t2">ใส่ยอดจริง (เช่น จากแอปธนาคาร) ระบบลงรายการปรับยอดส่วนต่างให้</div></div>
-      <div style="display:flex;gap:6px;width:100%;margin-top:8px"><input class="inp" id="aReal" inputmode="decimal" placeholder="ยอดจริง"><button class="btn" onclick="adjustAcc('${id}',${b})">ปรับยอด</button></div></div></div>
-      <div class="fld"><label>ยอดตั้งต้น (ก่อนรายการแรก)</label><input class="inp" id="aOpen" inputmode="decimal" value="${esc(a.opening)}"></div>
-      <div class="tgl"><input type="checkbox" id="aArch" ${isTrue(a.archived) ? 'checked' : ''}><label for="aArch" class="grow">ซ่อนบัญชีนี้ (ปิดบัญชีแล้ว)</label></div>
-      <button class="btn full" onclick="closeSheet();listFilter={type:'all',acc:'${id}',q:''};go('list')">ดูรายการของบัญชีนี้</button>`;
-  }
+  let h = '';
+  if (id) h += `<div class="card" style="margin-bottom:6px"><div class="row"><div class="ico">${(ACC_TYPE[a.type] || ACC_TYPE.other)[1]}</div><div class="grow"><div class="t2">ยอดตามแอป</div>
+      <div style="font-size:26px;font-weight:700" class="${b < 0 ? 'neg' : ''}">${money(b)}</div></div>
+      <button class="btn sm" onclick="closeSheet();listFilter={type:'all',acc:'${id}',q:''};go('list')">ดูรายการ</button></div></div>
+    <div class="flbl">ยอดจริงไม่ตรง? ใส่ยอดจากแอปธนาคาร ระบบลงรายการปรับยอดส่วนต่างให้</div>
+    <div style="display:flex;gap:8px"><div class="srch" style="margin:0;flex:1"><span>฿</span><input id="aReal" inputmode="decimal" placeholder="ยอดจริงตอนนี้"></div>
+      <button class="btn" style="white-space:nowrap" onclick="adjustAcc('${id}',${b})">ปรับยอด</button></div>`;
+  h += `<div class="flbl">ข้อมูลบัญชี</div><div class="card fcard">
+    ${fr('ชื่อ', `<input id="aName" value="${esc(a.name)}" placeholder="เช่น กสิกร ออมทรัพย์">`)}
+    ${fr('ประเภท', `<select id="aType">${Object.keys(ACC_TYPE).map(k => `<option value="${k}" ${a.type === k ? 'selected' : ''}>${ACC_TYPE[k][1]} ${ACC_TYPE[k][0]}</option>`).join('')}</select>`)}
+    ${fr('ช่วย AI', `<input id="aHint" value="${esc(a.hint)}" placeholder="KBank x1234">`)}
+    ${fr(id ? 'ยอดตั้งต้น' : 'ยอดตอนนี้', `<input id="aOpen" inputmode="decimal" value="${esc(id ? a.opening : 0)}">`)}
+    ${id ? chk('aArch', isTrue(a.archived), 'ซ่อนบัญชีนี้', 'ปิดบัญชีแล้ว ประวัติยังอยู่') : ''}</div>
+    <p class="note">"ช่วย AI" = ชื่อธนาคาร/แอป/เลขท้ายบัญชีหรือบัตร ให้อ่านสลิปแล้วเลือกบัญชีถูก${id ? '' : ' · บัตรเครดิตที่ค้างจ่าย ใส่ยอดติดลบ'}</p>`;
   const foot = (id ? `<button class="btn red" style="flex:0 0 auto" onclick="delAcc('${id}')">ลบ</button>` : '') + `<button class="btn pri" onclick="saveAcc('${id}')">บันทึก</button>`;
   openSheet(id ? 'บัญชี: ' + a.name : 'เพิ่มบัญชี', h, foot);
 }
@@ -916,11 +934,14 @@ function moveCat(id, k) {
 }
 function openCategory(id) {
   const c = id ? catOf(id) : { name: '', kind: 'expense', icon: '', budget: '' };
-  const h = `<div class="two"><div class="fld"><label>ไอคอน (อีโมจิ)</label><input class="inp" id="cIcon" value="${esc(c.icon)}" style="font-size:22px;text-align:center"></div>
-    <div class="fld"><label>ประเภท</label><select class="inp" id="cKind"><option value="expense" ${c.kind !== 'income' ? 'selected' : ''}>รายจ่าย</option><option value="income" ${c.kind === 'income' ? 'selected' : ''}>รายรับ</option></select></div></div>
-    <div class="fld"><label>ชื่อหมวด</label><input class="inp" id="cName" value="${esc(c.name)}"></div>
-    <div class="fld"><label>งบต่อเดือน (บาท) ไม่ใส่ = ไม่มีงบ</label><input class="inp" id="cBud" inputmode="decimal" value="${esc(c.budget)}"></div>
-    ${id ? `<div class="tgl"><input type="checkbox" id="cArch" ${isTrue(c.archived) ? 'checked' : ''}><label for="cArch" class="grow">ซ่อนหมวดนี้</label></div>` : ''}`;
+  const h = `<div style="text-align:center;margin:6px 0 4px"><input id="cIcon" value="${esc(c.icon)}" maxlength="4"
+      style="width:76px;height:76px;border-radius:20px;border:1px solid var(--line2);background:#fff;font-size:38px;text-align:center"></div>
+    <p class="note" style="text-align:center;margin:0 0 4px">แตะเพื่อเปลี่ยนไอคอน (อีโมจิ)</p>
+    <div class="card fcard">
+    ${fr('ชื่อหมวด', `<input id="cName" value="${esc(c.name)}">`)}
+    ${fr('ประเภท', `<select id="cKind"><option value="expense" ${c.kind !== 'income' ? 'selected' : ''}>รายจ่าย</option><option value="income" ${c.kind === 'income' ? 'selected' : ''}>รายรับ</option></select>`)}
+    ${fr('งบ/เดือน', `<input id="cBud" inputmode="decimal" value="${esc(c.budget)}" placeholder="ไม่มีงบ">`)}
+    ${id ? chk('cArch', isTrue(c.archived), 'ซ่อนหมวดนี้') : ''}</div>`;
   const foot = (id ? `<button class="btn red" style="flex:0 0 auto" onclick="delCat('${id}')">ลบ</button>` : '') + `<button class="btn pri" onclick="saveCat('${id}')">บันทึก</button>`;
   openSheet(id ? 'หมวด: ' + c.name : 'เพิ่มหมวด', h, foot);
 }
@@ -956,17 +977,21 @@ function openRecurring(id) {
 }
 function renderRecurring() {
   const ty = R.type;
-  let h = `<div class="seg" style="margin-bottom:12px">${[['expense', 'รายจ่าย'], ['income', 'รายรับ'], ['transfer', 'โอน']].map(x =>
+  const accOpts = sel => accs().map(a => `<option value="${a.acc_id}" ${sel === a.acc_id ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+  let h = `<div class="seg">${[['expense', 'รายจ่าย'], ['income', 'รายรับ'], ['transfer', 'โอน']].map(x =>
     `<button class="${ty === x[0] ? 'on' : ''}" onclick="readRec();R.type='${x[0]}';R.cat_id='';renderRecurring()">${x[1]}</button>`).join('')}</div>
-    <div class="fld"><label>ชื่อ</label><input class="inp" id="rName" value="${esc(R.name)}" placeholder="เช่น ค่าเน็ตบ้าน"></div>
-    <div class="fld"><label>จำนวนเงิน${R.auto ? '' : ' (ประมาณ แก้ตอนบันทึกได้)'}</label><input class="inp" id="rAmt" inputmode="decimal" value="${esc(R.amount)}"></div>`;
-  if (ty !== 'transfer') h += `<div class="fld"><label>หมวด</label><select class="inp" id="rCat"><option value="">— เลือก —</option>${cats(ty).map(c => `<option value="${c.cat_id}" ${R.cat_id === c.cat_id ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('')}</select></div>`;
-  h += `<div class="two"><div class="fld"><label>${ty === 'income' ? 'เข้าบัญชี' : 'จากบัญชี'}</label><select class="inp" id="rAcc">${accs().map(a => `<option value="${a.acc_id}" ${R.acc_id === a.acc_id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>`;
-  h += ty === 'transfer' ? `<div class="fld"><label>ไปบัญชี</label><select class="inp" id="rTo"><option value="">— เลือก —</option>${accs().map(a => `<option value="${a.acc_id}" ${R.to_acc_id === a.acc_id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div></div>` : '<div></div></div>';
-  h += `<div class="two"><div class="fld"><label>ความถี่</label><select class="inp" id="rFreq">${Object.keys(FREQ).map(k => `<option value="${k}" ${R.freq === k ? 'selected' : ''}>${FREQ[k]}</option>`).join('')}</select></div>
-    <div class="fld"><label>ครั้งต่อไป</label><input class="inp" type="date" id="rNext" value="${esc(R.next_date)}"></div></div>
-    <div class="tgl"><input type="checkbox" id="rAuto" ${R.auto ? 'checked' : ''}><label for="rAuto" class="grow"><b>ลงให้อัตโนมัติ</b><div class="note">ถึงวันแล้วบันทึกเอง ไม่ต้องกด</div></label></div>
-    <div class="tgl"><input type="checkbox" id="rAct" ${R.active ? 'checked' : ''}><label for="rAct" class="grow">เปิดใช้งาน</label></div>`;
+    <div class="flbl">รายการ</div><div class="card fcard">
+    ${fr('ชื่อ', `<input id="rName" value="${esc(R.name)}" placeholder="เช่น ค่าเน็ตบ้าน">`)}
+    ${fr('จำนวนเงิน', `<input id="rAmt" inputmode="decimal" value="${esc(R.amount)}" placeholder="0">`)}
+    ${ty !== 'transfer' ? fr('หมวด', `<select id="rCat"><option value="">— เลือก —</option>${cats(ty).map(c => `<option value="${c.cat_id}" ${R.cat_id === c.cat_id ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('')}</select>`) : ''}
+    ${fr(ty === 'income' ? 'เข้าบัญชี' : 'จากบัญชี', `<select id="rAcc">${accOpts(R.acc_id)}</select>`)}
+    ${ty === 'transfer' ? fr('ไปบัญชี', `<select id="rTo"><option value="">— เลือก —</option>${accOpts(R.to_acc_id)}</select>`) : ''}</div>
+    <div class="flbl">รอบ</div><div class="card fcard">
+    ${fr('ความถี่', `<select id="rFreq">${Object.keys(FREQ).map(k => `<option value="${k}" ${R.freq === k ? 'selected' : ''}>${FREQ[k]}</option>`).join('')}</select>`)}
+    ${fr('ครั้งต่อไป', `<input type="date" id="rNext" value="${esc(R.next_date)}">`)}
+    ${chk('rAuto', R.auto, 'ลงให้อัตโนมัติ', 'ถึงวันแล้วบันทึกเอง (ยอดเท่าเดิมทุกรอบ)')}
+    ${chk('rAct', R.active, 'เปิดใช้งาน')}</div>
+    <p class="note">ไม่อัตโนมัติ = ขึ้นเตือนหน้าแรกให้กดบันทึก แก้ยอดได้ (เหมาะกับค่าไฟ ค่าน้ำ)</p>`;
   const foot = (R.rec_id ? `<button class="btn red" style="flex:0 0 auto" onclick="delRec()">ลบ</button>` : '') + `<button class="btn pri" onclick="saveRec()">บันทึก</button>`;
   openSheet(R.rec_id ? 'แก้รายการประจำ' : 'เพิ่มรายการประจำ', h, foot);
 }
