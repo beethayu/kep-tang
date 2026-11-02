@@ -980,7 +980,7 @@ function showKeyBox() {
 function showSetup() {
   openSheet('เริ่มใช้เก็บตังค์', `<div class="alert info">ตั้งครั้งเดียว ข้อมูลเก็บใน Google Sheets ของบัญชี bee.prettyboy</div>
     <div class="fld"><label>ตั้งรหัสเข้าแอป (จำไว้ ใช้ตอนเปิดในเครื่องใหม่)</label><input class="inp" id="suKey" autocomplete="new-password"></div>
-    <div class="fld"><label>รหัส Gemini (อ่านสลิป) — ใส่ทีหลังได้</label><input class="inp" id="suGem" placeholder="AIza…"></div>
+    <div class="fld"><label>รหัส Gemini (อ่านสลิป) — ใส่ทีหลังได้</label><input class="inp" id="suGem" placeholder="AQ.… หรือ AIza…"></div>
     <p class="note">ก๊อปรหัส Gemini ได้จาก Apps Script แอปไร่อ้อย → ⚙️ ตั้งค่าโปรเจกต์ → คุณสมบัติของสคริปต์ → GEMINI_KEY</p>`,
     `<button class="btn pri" onclick="doSetup()">เริ่มใช้</button>`);
 }
@@ -991,7 +991,7 @@ function doSetup() {
   run('initSetup', [k, g], 'กำลังสร้างชีต…', () => { closeSheet(); toast('พร้อมใช้แล้ว'); });
 }
 function openGemini() {
-  openSheet('รหัส Gemini', `<div class="fld"><label>วางรหัส (ขึ้นต้น AIza…)</label><input class="inp" id="gIn"></div>
+  openSheet('รหัส Gemini', `<div class="fld"><label>วางรหัส (ขึ้นต้น AQ. หรือ AIza)</label><input class="inp" id="gIn"></div>
     <p class="note">ใช้ตัวเดียวกับแอปไร่อ้อยได้ (Apps Script ไร่ → ⚙️ → คุณสมบัติของสคริปต์ → GEMINI_KEY) หรือ aistudio.google.com/apikey</p>`,
     `<button class="btn pri" onclick="saveGemini()">บันทึก</button>`);
 }
