@@ -117,9 +117,34 @@
     .chip { height: 36px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line2); background: #fff; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
     .chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
     .cgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .cgrid button { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 7px 2px 6px; font-size: 12px; line-height: 1.25; min-height: 64px; }
-    .cgrid button span { display: block; font-size: 22px; }
+    .cgrid button { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 3px 6px; font-size: 12.5px; line-height: 1.25; height: 70px;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; overflow: hidden; }
+    .cgrid button span { display: block; font-size: 22px; line-height: 1.1; }
+    .cgrid button em { font-style: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .cgrid button.on { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); font-weight: 600; }
+    .two > * { min-width: 0; }
+    /* iOS: ช่องวันที่มีความกว้างขั้นต่ำของมันเอง ล้นไปทับช่องข้าง ๆ → บังคับให้พอดีช่อง */
+    input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; display: block; background: #fff; }
+    input[type=date]::-webkit-date-and-time-value { text-align: left; }
+    .flbl { font-size: 13px; color: var(--muted); font-weight: 600; margin: 16px 2px 6px; }
+    .fcard .frow { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 14px; border-top: 1px solid var(--line); }
+    .fcard .frow:first-child { border-top: 0; }
+    .fcard .frow span { width: 88px; flex: none; color: var(--muted); font-size: 15px; }
+    .fcard .frow input { flex: 1; min-width: 0; border: 0; outline: 0; height: 48px; background: transparent; text-align: right; padding: 0; }
+    .fcard .frow input[type=date] { background: transparent; }
+    .fcard .frow input[type=date]::-webkit-date-and-time-value { text-align: right; }
+    .amtbox { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--line2); border-radius: 14px; height: 64px; padding: 0 16px; }
+    .amtbox span { font-size: 22px; color: var(--muted); font-weight: 600; }
+    .amtbox input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 32px; font-weight: 700; text-align: right; height: 100%; padding: 0; }
+    .amtbox.dk { background: rgba(255,255,255,.12); border: 0; margin-top: 12px; height: 72px; }
+    .amtbox.dk span { color: rgba(255,255,255,.7); }
+    .amtbox.dk input { color: #fff; font-size: 38px; }
+    .amtbox.dk input::placeholder { color: rgba(255,255,255,.45); }
+    .seg-dk { background: rgba(255,255,255,.12); }
+    .seg-dk button { color: rgba(255,255,255,.8); }
+    .seg-dk button.on { background: #fff; color: var(--brand); }
+    .hd-pill { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px; border-radius: 99px; background: #fff; color: var(--brand); font-weight: 600; font-size: 15px; cursor: pointer; }
+    .more-btn { display: block; width: 100%; margin-top: 6px; height: 36px; color: var(--brand); font-weight: 600; font-size: 14px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .tgl { display: flex; align-items: center; gap: 10px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
     .tgl input { width: 22px; height: 22px; accent-color: var(--brand); }
@@ -580,8 +605,10 @@ function openAdd() { go('add'); }
 function addHtml() {
   if (!F || F.tx_id) F = newDraft();
   const x = txFormHtml('บันทึก', true);
-  return `<div class="hd"><div class="hd-in"><div class="hd-top"><div class="hd-title">บันทึก</div></div></div></div>
-    <div class="wrap" style="padding-top:14px">${x.h}<button class="btn pri full" style="height:50px;font-size:17px" onclick="saveTxForm()">บันทึก</button></div>`;
+  return `<div class="hd"><div class="hd-in"><div class="hd-top"><div class="hd-title">บันทึก</div>
+    <label for="slipFile" class="hd-pill">📷 ถ่ายสลิป</label></div>
+    <div style="margin-top:8px">${typeSeg('บันทึก', true, true)}</div>${amtInput(true)}</div></div>
+    <div class="wrap">${x.h}<button class="btn pri full" style="height:52px;font-size:17px;margin-top:16px" onclick="saveTxForm()">บันทึก</button></div>`;
 }
 function lastAcc() {
   const t = (D.tx || []).slice().sort((a, b) => String(a.created_at) < String(b.created_at) ? 1 : -1)[0];
@@ -597,29 +624,45 @@ function renderTxForm(title, isNew) {
   const x = txFormHtml(title, isNew);
   openSheet(title, x.h, x.foot);
 }
+// หมวดเรียงตามที่ใช้บ่อย (120 วันล่าสุด) โชว์ 8 อัน กด "ทั้งหมด" ดูที่เหลือ
+let catAll = false;
+function catsByUse(kind) {
+  const since = shiftMonth(todayIso().slice(0, 7), -4), n = {};
+  (D.tx || []).forEach(t => { if (t.cat_id && String(t.date) >= since) n[t.cat_id] = (n[t.cat_id] || 0) + 1; });
+  return cats(kind).slice().sort((a, b) => (n[b.cat_id] || 0) - (n[a.cat_id] || 0) || num(a.order) - num(b.order));
+}
+function typeSeg(title, isNew, dark) {
+  return `<div class="seg${dark ? ' seg-dk' : ''}">${[['expense', 'รายจ่าย'], ['income', 'รายรับ'], ['transfer', 'โอน/จ่ายบัตร']].map(x =>
+    `<button class="${F.type === x[0] ? 'on' : ''}" onclick="readForm();F.type='${x[0]}';F.cat_id='';catAll=false;renderTxForm('${title}',${isNew})">${x[1]}</button>`).join('')}</div>`;
+}
+function amtInput(dark) {
+  return `<div class="amtbox${dark ? ' dk' : ''}"><span>฿</span><input id="fAmt" inputmode="decimal" placeholder="0" value="${esc(F.amount)}" autocomplete="off"></div>`;
+}
+// isNew = แท็บบันทึก (ประเภท + จำนวนเงินอยู่บนหัวเขียว) / ไม่ใช่ = หน้าต่างแก้รายการ
 function txFormHtml(title, isNew) {
   const ty = F.type;
   let h = '';
-  if (isNew) h += `<div class="bigbtns"><label for="slipFile"><span>📷</span>ถ่าย / เลือกรูปสลิป</label>
-    <button class="alt" onclick="openRecurrings()"><span>🔁</span>รายการประจำ</button></div>`;
-  if (ty === 'adjust') {
-    h += `<div class="alert info">⚖️ รายการปรับยอดบัญชี ${esc(accOf(F.acc_id).name)} ไม่นับเป็นรายรับรายจ่าย</div>`;
-  } else {
-    h += `<div class="seg" style="margin-bottom:12px">${[['expense', 'รายจ่าย'], ['income', 'รายรับ'], ['transfer', 'โอน/จ่ายบัตร']].map(x =>
-      `<button class="${ty === x[0] ? 'on' : ''}" onclick="F.type='${x[0]}';F.cat_id='';readForm();renderTxForm('${title}',${isNew})">${x[1]}</button>`).join('')}</div>`;
+  if (!isNew) {
+    if (ty === 'adjust') h += `<div class="alert info">⚖️ รายการปรับยอดบัญชี ${esc(accOf(F.acc_id).name)} ไม่นับเป็นรายรับรายจ่าย</div>`;
+    else h += typeSeg(title, isNew) + '<div style="height:10px"></div>';
+    h += amtInput(false);
   }
-  h += `<div class="fld"><input class="inp amtbig" id="fAmt" inputmode="decimal" placeholder="0" value="${esc(F.amount)}"></div>`;
   if (ty === 'expense' || ty === 'income') {
-    h += `<div class="fld"><label>หมวด</label><div class="cgrid">${cats(ty).map(c =>
-      `<button class="${F.cat_id === c.cat_id ? 'on' : ''}" onclick="readForm();F.cat_id='${c.cat_id}';renderTxForm('${title}',${isNew})"><span>${esc(c.icon || '📦')}</span>${esc(c.name)}</button>`).join('')}</div></div>`;
+    let list = catsByUse(ty);
+    const more = list.length > 8 && !catAll;
+    if (more) { const top = list.slice(0, 8); const sel = list.find(c => c.cat_id === F.cat_id); if (sel && top.indexOf(sel) < 0) top[7] = sel; list = top; }
+    h += `<div class="flbl">หมวด</div><div class="cgrid">${list.map(c =>
+      `<button class="${F.cat_id === c.cat_id ? 'on' : ''}" onclick="readForm();F.cat_id='${c.cat_id}';renderTxForm('${title}',${isNew})"><span>${esc(c.icon || '📦')}</span><em>${esc(c.name)}</em></button>`).join('')}</div>
+      ${cats(ty).length > 8 ? `<button class="more-btn" onclick="readForm();catAll=!catAll;renderTxForm('${title}',${isNew})">${catAll ? 'ย่อ ▴' : 'หมวดทั้งหมด (' + cats(ty).length + ') ▾'}</button>` : ''}`;
   }
-  h += `<div class="fld"><label>${ty === 'transfer' ? 'จากบัญชี' : ty === 'income' ? 'เข้าบัญชี' : 'จ่ายจากบัญชี'}</label>${accChips('acc_id', title, isNew)}</div>`;
-  if (ty === 'transfer') h += `<div class="fld"><label>ไปบัญชี</label>${accChips('to_acc_id', title, isNew)}
-    <div class="note" style="margin-top:4px">จ่ายบัตรเครดิต = โอนจากธนาคาร → บัตร · จ่ายค่าไร่ไปก่อน = โอนไป "สำรองจ่ายไร่" · ได้เงินเบิกคืน = โอนจาก "สำรองจ่ายไร่" → ธนาคาร</div></div>`;
-  h += `<div class="two"><div class="fld"><label>วันที่</label><input class="inp" type="date" id="fDate" value="${esc(F.date)}"></div>
-    <div class="fld"><label>${ty === 'transfer' ? 'รายการ' : 'รายการ / ร้าน'}</label><input class="inp" id="fItem" value="${esc(F.item || F.shop || '')}" placeholder="ไม่ใส่ก็ได้"></div></div>
-    <div class="fld"><label>หมายเหตุ</label><input class="inp" id="fNote" value="${esc(F.note)}"></div>`;
-  if (F.photo_id) h += `<button class="btn full" style="margin-bottom:12px" onclick="showPhoto('${F.photo_id}')">📷 ดูรูปสลิป</button>`;
+  h += `<div class="flbl">${ty === 'transfer' ? 'จากบัญชี' : ty === 'income' ? 'เข้าบัญชี' : 'จ่ายจากบัญชี'}</div>${accChips('acc_id', title, isNew)}`;
+  if (ty === 'transfer') h += `<div class="flbl">ไปบัญชี</div>${accChips('to_acc_id', title, isNew)}
+    <div class="note" style="margin-top:6px">จ่ายบัตรเครดิต = ธนาคาร → บัตร · จ่ายค่าไร่ไปก่อน = → "สำรองจ่ายไร่" · ได้เงินเบิกคืน = "สำรองจ่ายไร่" → ธนาคาร</div>`;
+  h += `<div class="flbl">รายละเอียด</div><div class="card fcard">
+    <label class="frow"><span>วันที่</span><input type="date" id="fDate" value="${esc(F.date)}"></label>
+    <label class="frow"><span>${ty === 'transfer' ? 'รายการ' : 'รายการ/ร้าน'}</span><input id="fItem" value="${esc(F.item || F.shop || '')}" placeholder="ไม่ใส่ก็ได้"></label>
+    <label class="frow"><span>หมายเหตุ</span><input id="fNote" value="${esc(F.note)}" placeholder="ไม่ใส่ก็ได้"></label></div>`;
+  if (F.photo_id) h += `<button class="btn full" style="margin-top:12px" onclick="showPhoto('${F.photo_id}')">📷 ดูรูปสลิป</button>`;
   const foot = (isNew ? '' : `<button class="btn red" style="flex:0 0 auto" onclick="delTx()">ลบ</button>`) + `<button class="btn pri" onclick="saveTxForm()">บันทึก</button>`;
   return { h, foot };
 }
