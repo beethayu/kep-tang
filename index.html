@@ -166,7 +166,7 @@
 <nav class="bnav" id="bnav">
   <button data-t="home" onclick="go('home')"><span>🏠</span>หน้าแรก</button>
   <button data-t="list" onclick="go('list')"><span>📒</span>รายการ</button>
-  <button class="add" onclick="openAdd()"><span>📝</span>บันทึก</button>
+  <button data-t="add" onclick="go('add')"><span>📝</span>บันทึก</button>
   <button data-t="sum" onclick="go('sum')"><span>📊</span>สรุป</button>
   <button data-t="more" onclick="go('more')"><span>⚙️</span>ตั้งค่า</button>
 </nav>
@@ -283,7 +283,7 @@ function render() {
   if (!D) { app.innerHTML = '<div class="empty" style="padding-top:40vh">กำลังโหลด…</div>'; return; }
   if (D.needsSetup) { showSetup(); return; }
   const net = netErr ? `<div class="netbar"><span>⚠️ ${esc(netErr)}</span><button class="btn sm" onclick="load()">ลองใหม่</button></div>` : '';
-  app.innerHTML = net + ({ home: homeHtml, list: listHtml, sum: sumHtml, more: moreHtml }[tab] || homeHtml)();
+  app.innerHTML = net + ({ home: homeHtml, list: listHtml, add: addHtml, sum: sumHtml, more: moreHtml }[tab] || homeHtml)();
 }
 
 function monthNav() {
@@ -574,9 +574,14 @@ function toast(m) { const t = document.getElementById('toast'); t.textContent = 
 
 // ---------- บันทึก (พิมพ์เอง) ----------
 let F = null; // ฟอร์มรายการ
-function openAdd() {
-  F = { type: 'expense', amount: '', cat_id: '', acc_id: lastAcc(), to_acc_id: '', date: todayIso(), item: '', note: '' };
-  renderTxForm('บันทึก', true);
+// บันทึก = แท็บจริง (ไม่ใช่หน้าต่างเด้ง) เหมือนแท็บบันทึกงานในแอปไร่ · พิมพ์ค้างไว้แล้วสลับแท็บ ร่างยังอยู่
+function newDraft() { return { type: 'expense', amount: '', cat_id: '', acc_id: lastAcc(), to_acc_id: '', date: todayIso(), item: '', note: '' }; }
+function openAdd() { go('add'); }
+function addHtml() {
+  if (!F || F.tx_id) F = newDraft();
+  const x = txFormHtml('บันทึก', true);
+  return `<div class="hd"><div class="hd-in"><div class="hd-top"><div class="hd-title">บันทึก</div></div></div></div>
+    <div class="wrap" style="padding-top:14px">${x.h}<button class="btn pri full" style="height:50px;font-size:17px" onclick="saveTxForm()">บันทึก</button></div>`;
 }
 function lastAcc() {
   const t = (D.tx || []).slice().sort((a, b) => String(a.created_at) < String(b.created_at) ? 1 : -1)[0];
@@ -588,6 +593,11 @@ function openTx(id) {
   renderTxForm('แก้รายการ', false);
 }
 function renderTxForm(title, isNew) {
+  if (isNew) return render();
+  const x = txFormHtml(title, isNew);
+  openSheet(title, x.h, x.foot);
+}
+function txFormHtml(title, isNew) {
   const ty = F.type;
   let h = '';
   if (isNew) h += `<div class="bigbtns"><label for="slipFile"><span>📷</span>ถ่าย / เลือกรูปสลิป</label>
@@ -611,8 +621,7 @@ function renderTxForm(title, isNew) {
     <div class="fld"><label>หมายเหตุ</label><input class="inp" id="fNote" value="${esc(F.note)}"></div>`;
   if (F.photo_id) h += `<button class="btn full" style="margin-bottom:12px" onclick="showPhoto('${F.photo_id}')">📷 ดูรูปสลิป</button>`;
   const foot = (isNew ? '' : `<button class="btn red" style="flex:0 0 auto" onclick="delTx()">ลบ</button>`) + `<button class="btn pri" onclick="saveTxForm()">บันทึก</button>`;
-  openSheet(title, h, foot);
-  if (isNew && !F.amount) setTimeout(() => { const a = document.getElementById('fAmt'); if (a) a.focus(); }, 50);
+  return { h, foot };
 }
 function accChips(field, title, isNew) {
   return `<div class="chips">${accs().filter(a => field === 'to_acc_id' || F.type === 'transfer' || a.type !== 'farm').map(a =>
@@ -633,7 +642,10 @@ function saveTxForm() {
   if (!F.acc_id) return alert('เลือกบัญชี');
   const t = Object.assign({}, F, { amount: F.type === 'adjust' ? Math.abs(amt) * (F.adjSign || 1) : amt });
   delete t.adjSign;
-  run('saveTx', [t], 'กำลังบันทึก…', () => { closeSheet(); toast('บันทึกแล้ว'); });
+  const isNew = !F.tx_id;
+  if (isNew) F = null;
+  run('saveTx', [t], 'กำลังบันทึก…', () => { if (isNew) { F = null; render(); } else closeSheet(); toast('บันทึกแล้ว'); })
+    .catch(() => { if (isNew) { F = t; render(); } });
 }
 function delTx() {
   if (!confirm('ลบรายการนี้?')) return;
