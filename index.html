@@ -160,6 +160,12 @@
     .tgl { display: flex; align-items: center; gap: 10px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
     .tgl input { width: 22px; height: 22px; accent-color: var(--brand); }
     .note { font-size: 13px; color: var(--muted); }
+    .kp { display: flex; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); }
+    .kp:first-child { border-top: 0; }
+    .kp-n { width: 24px; height: 24px; border-radius: 99px; background: var(--brand); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+    .kp-t { font-size: 15px; }
+    .kp-b { font-size: 14px; color: var(--ink, #222); margin-top: 3px; line-height: 1.5; }
+    .ib-t { font-size: 17px; font-weight: 700; color: var(--brand-d); }
     .alert { border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
     .alert.warn { background: var(--warn-soft); color: #6B3C00; }
     .alert.red { background: var(--red-soft); color: var(--red); }
@@ -288,6 +294,7 @@ function setData(d) {
   if (d.autoPosted) toast('บันทึกรายการประจำอัตโนมัติ ' + d.autoPosted + ' รายการ');
   netErr = '';
   render();
+  inboxPump();
 }
 const accs = (all) => (D.accounts || []).filter(a => all || !isTrue(a.archived)).sort((a, b) => num(a.order) - num(b.order));
 const cats = (kind, all) => (D.categories || []).filter(c => (all || !isTrue(c.archived)) && (!kind || (c.kind === 'income') === (kind === 'income')))
@@ -360,6 +367,7 @@ function homeHtml() {
     <div><small>จ่าย ${TH_M[Number(ym.slice(5)) - 1]}</small><b>${money(s.exp)}</b></div>
     <div><small>เหลือ</small><b>${money(s.net)}</b></div></div></div></div><div class="wrap">`;
 
+  h += inboxHtml();
   // ถึงกำหนด
   const due = (D.due || []).slice().sort((a, b) => a.next_date < b.next_date ? -1 : 1);
   if (due.length) {
@@ -600,6 +608,7 @@ function moreHtml() {
     <div class="sec"><h3>การเชื่อมต่อ</h3></div><div class="card">
       ${row('✨', 'รหัส Gemini (อ่านสลิป)', st.gemini ? '✅ ใส่แล้ว' : '⚠️ ยังไม่ได้ใส่', 'openGemini()')}
       ${row('🌾', 'รหัสแอปไร่อ้อย', st.raiKey ? '✅ ใส่แล้ว (ยอดรอเบิกจะขึ้นเมื่อแอปไร่ทำเรื่องเบิกเสร็จ)' : 'ไว้ดึงยอดรอเบิก', 'openRaiKey()')}
+      ${row('📲', 'ส่งสลิป K PLUS อัตโนมัติ', st.inboxCount ? '✅ รับแล้ว ' + st.inboxCount + ' ใบ' : 'ยังไม่ได้ตั้ง · ทำคำสั่งลัด 1 อัน', 'openKplus()')}
       ${row('🔑', 'เปลี่ยนรหัสเข้าแอป', '', 'openChangeKey()')}
     </div>
     <p class="note" style="text-align:center;margin-top:16px">เก็บตังค์ v${esc(D.version || '')} · ข้อมูลใน Google Sheets ของคุณ</p></div>`;
@@ -792,8 +801,9 @@ function renderSlip() {
   const sum = r2(S.items.reduce((s, it) => s + num(it.amount), 0));
   let h = '';
   if (S.error) h += `<div class="alert red">อ่านอัตโนมัติไม่ได้: ${esc(S.error)}<br>กรอกเองได้เลย รูปเก็บไว้แล้ว</div>`;
-  if (S.dupe) h += `<div class="alert warn">⚠️ อาจลงซ้ำ: มีรายการ "${esc(S.dupe.item)}" ${thDate(S.dupe.date)} ${S.ref ? 'เลขอ้างอิงเดียวกัน' : 'ยอดและร้านเดียวกัน'} แล้ว</div>`;
-  if (S.thumb) h += `<img class="photo" src="data:image/jpeg;base64,${S.thumb}" onclick="this.style.maxHeight=this.style.maxHeight?'':'none'">
+  if (S.dupe) h += `<div class="alert warn">⚠️ อาจลงซ้ำ: มีรายการ "${esc(S.dupe.item)}" ${thDate(S.dupe.date)} ${S.dupe.near ? 'ยอดเท่ากัน วันใกล้กัน (กรอกเองไว้)' : S.ref ? 'เลขอ้างอิงเดียวกัน' : 'ยอดและร้านเดียวกัน'} แล้ว — ถ้าใช่ใบเดียวกันกด "ทิ้ง"</div>`;
+  if (S.inbox_id && !S.thumb) h += `<div id="sThumb"><div class="note" style="text-align:center;padding:16px">กำลังโหลดรูปสลิป…</div></div>`;
+  if (S.thumb) h += `<img class="photo" src="data:${S.thumbMime || 'image/jpeg'};base64,${S.thumb}" onclick="this.style.maxHeight=this.style.maxHeight?'':'none'">
     <p class="note" style="text-align:center;margin:4px 0 10px">แตะรูปเพื่อขยาย${S.pages && S.pages.length > 1 ? ' · ' + S.pages.length + ' รูป' : ''}</p>`;
   h += `<div class="tgl"><label for="sFarm" class="grow"><b>🌾 ค่าไร่ (สำรองจ่าย รอเบิก)</b><div class="note">ไม่นับเป็นรายจ่ายส่วนตัว ลงเป็นโอนไป "สำรองจ่ายไร่" ยอดเดียว</div></label>
     <input type="checkbox" id="sFarm" ${S.farm ? 'checked' : ''} onchange="readSlipForm();S.farm=this.checked;renderSlip()"></div>`;
@@ -815,10 +825,10 @@ function renderSlip() {
   h += `<button class="btn full" style="margin-bottom:12px" onclick="readSlipForm();S.items.push({item:'',amount:'',cat_id:''});renderSlip()">＋ เพิ่มบรรทัด</button>`;
   const diff = S.total && Math.abs(sum - S.total) > 0.01;
   h += `<div class="alert ${diff ? 'warn' : 'info'}">รวม <b>${money(sum)}</b> บาท${S.total ? (diff ? ` · ⚠️ สลิปเขียน ${money(S.total)} (ต่าง ${money(sum - S.total)}) เช็กตัวเลขอีกที` : ' · ✓ ตรงกับยอดในสลิป') : ''}</div>`;
-  if (!S.edit) h += `<label for="slipFile" class="btn full" style="margin-bottom:8px" onclick="S.addPage=true">📄 เพิ่มรูป (ใบเสร็จยาว ต่อหน้าถัดไป)</label>`;
+  if (!S.edit && !S.inbox_id) h += `<label for="slipFile" class="btn full" style="margin-bottom:8px" onclick="S.addPage=true">📄 เพิ่มรูป (ใบเสร็จยาว ต่อหน้าถัดไป)</label>`;
   if (S.ref) h += `<p class="note">เลขอ้างอิง ${esc(S.ref)}${S.time ? ' · เวลา ' + esc(S.time) : ''}${S.ms && S.ms.ai ? ' · อ่าน ' + (S.ms.ai / 1000).toFixed(1) + ' วิ' : ''}</p>`;
-  const foot = `<button class="btn" style="flex:0 0 auto" onclick="cancelSlip()">ยกเลิก</button><button class="btn pri" onclick="saveSlip()">บันทึก</button>`;
-  openSheet(S.edit ? 'แก้ใบเสร็จ' : 'ตรวจสลิป', h, foot);
+  const foot = `<button class="btn${S.inbox_id ? ' red' : ''}" style="flex:0 0 auto" onclick="cancelSlip()">${S.inbox_id ? 'ทิ้ง' : 'ยกเลิก'}</button><button class="btn pri" onclick="saveSlip()">บันทึก</button>`;
+  openSheet(S.edit ? 'แก้ใบเสร็จ' : S.inbox_id ? 'ตรวจสลิป K PLUS' : 'ตรวจสลิป', h, foot);
   S.addPage = false;
 }
 function readSlipForm() {
@@ -847,20 +857,142 @@ function saveSlip() {
   if (!S.farm && items.some(it => num(it.amount) > 0 && !it.cat_id)) return alert('เลือกหมวดให้ครบทุกบรรทัด');
   if (!S.acc_id) return alert('เลือกบัญชี');
   if (S.dupe && !S.edit && !confirm('อาจลงซ้ำกับรายการเดิม บันทึกต่อไหม?')) return;
-  const b = { bill_id: S.edit || '', date: S.date, acc_id: S.acc_id, shop: S.shop, ref: S.ref, photo_id: S.photo_id, farm: S.farm,
+  const b = { bill_id: S.edit || '', inbox_id: S.inbox_id || '', date: S.date, acc_id: S.acc_id, shop: S.shop, ref: S.ref, photo_id: S.photo_id, farm: S.farm,
     items: items.map(it => ({ item: it.item, amount: num(it.amount), cat_id: it.cat_id, type: S.type === 'income' ? 'income' : 'expense' })) };
   run('saveBill', [b], 'กำลังบันทึก…', () => {
-    S = null; closeSheet(); toast('บันทึกแล้ว');
+    const fromInbox = S.inbox_id; S = null; closeSheet(); toast('บันทึกแล้ว');
+    if (fromInbox) return nextInbox();
     if (slipQueue.length) { const f = slipQueue.shift(); setTimeout(() => readFiles([f]), 300); }
   });
 }
 function cancelSlip() {
   if (!S) return closeSheet();
+  if (S.inbox_id) {
+    if (!confirm('ทิ้งสลิปนี้? (ไม่บันทึก รูปจะถูกลบ)')) return;
+    const id = S.inbox_id; S = null;
+    return run('discardInbox', [id], 'กำลังทิ้ง…', () => { closeSheet(); toast('ทิ้งแล้ว'); nextInbox(); });
+  }
   if (!S.edit) {
     if (!confirm('ยกเลิกสลิปนี้? (รูปจะถูกทิ้ง)')) return;
     if (S.photo_id) api('discardSlip', [S.photo_id]).catch(() => {});
   }
   S = null; slipQueue = []; closeSheet();
+}
+
+// ---------- กล่องสลิป K PLUS (คำสั่งลัดส่งมา → รอยืนยัน) ----------
+let inboxAll = false, inboxBusy = {}, inboxTried = {};
+const inboxList = () => (D.inbox || []).filter(x => x.status !== 'saved' && x.status !== 'discarded');
+function inboxHtml() {
+  const list = inboxList();
+  if (!list.length) return '';
+  const sure = list.filter(x => x.status === 'ready' && x.data && x.data.sure);
+  const reading = list.filter(x => x.status === 'new' || x.status === 'reading').length;
+  const show = inboxAll ? list : list.slice(0, 8);
+  let h = `<div class="sec"><h3>📥 สลิป K PLUS</h3>${list.length > 8 ? `<a href="#" onclick="inboxAll=!inboxAll;render();return false">${inboxAll ? 'ย่อ' : 'ทั้งหมด ' + list.length}</a>` : ''}</div>
+    <div class="card"><div style="padding:12px 12px 4px"><div class="ib-t">สลิปใหม่ ${list.length} ใบ รอยืนยัน</div>
+    <div class="t2" style="white-space:normal">${reading ? `กำลังอ่าน ${reading} ใบ… ใช้แอปต่อได้ · ` : ''}แตะเพื่อตรวจ/แก้หมวด</div></div>` +
+    show.map(x => {
+      const d = x.data || {}, it = (d.items || [])[0] || {};
+      if (x.status === 'new' || x.status === 'reading') return `<div class="row"><div class="ico">⏳</div><div class="grow"><div class="t1">กำลังอ่าน…</div>
+        <div class="t2">${thDate(String(x.taken).slice(0, 10))} ${String(x.taken).slice(11, 16)}</div></div></div>`;
+      if (x.status === 'error') return `<button class="row" onclick="openInbox('${x.in_id}')"><div class="ico">⚠️</div><div class="grow"><div class="t1">อ่านไม่ได้ · แตะเพื่อกรอกเอง</div>
+        <div class="t2">${thDate(String(x.taken).slice(0, 10))} ${String(x.taken).slice(11, 16)} · ${esc(x.err)}</div></div></button>`;
+      const c = catOf(it.cat_id), inc = d.type === 'income';
+      return `<button class="row" onclick="openInbox('${x.in_id}')"><div class="ico">${d.farm ? '🌾' : esc(it.cat_id ? c.icon : '❔')}</div>
+        <div class="grow"><div class="t1">${esc(d.shop || it.item || 'สลิป')}${d.sure ? '' : ' <span class="pill warn">ตรวจ</span>'}</div>
+        <div class="t2">${thDate(d.date)} · ${d.farm ? 'ค่าไร่' : it.cat_id ? esc(c.name) : 'ยังไม่มีหมวด'}${(d.items || []).length > 1 ? ' · ' + d.items.length + ' รายการ' : ''}${d.dupe ? ' · อาจซ้ำ' : ''}</div></div>
+        <div class="amt ${inc ? 'in' : ''}">${inc ? '+' : ''}${money(d.total)}</div></button>`;
+    }).join('') +
+    (sure.length ? `<div style="padding:10px 12px 12px;border-top:1px solid var(--line)"><button class="btn pri full" onclick="confirmSure()">✓ ยืนยันทั้งหมดที่ AI มั่นใจ (${sure.length})</button>
+      ${sure.length < list.length ? `<div class="note" style="margin-top:6px">ที่มีป้าย "ตรวจ" แตะทีละใบ (หมวด/บัญชีไม่แน่ใจ หรืออาจซ้ำ)</div>` : ''}</div>` : '') + `</div>`;
+  return h;
+}
+// ทยอยอ่านสลิปที่ยังไม่ได้อ่าน ทีละ 2 ใบ (เบื้องหลัง ไม่บังจอ)
+function inboxPump() {
+  if (!D || !D.inbox) return;
+  const todo = D.inbox.filter(x => !inboxBusy[x.in_id] && (x.status === 'new' || (x.status === 'error' && !inboxTried[x.in_id])));
+  const slots = 2 - Object.keys(inboxBusy).length;
+  todo.slice(0, Math.max(0, slots)).forEach(x => {
+    inboxBusy[x.in_id] = 1; inboxTried[x.in_id] = 1;
+    api('readInbox', [x.in_id]).then(r => {
+      delete inboxBusy[x.in_id];
+      const i = (D.inbox || []).findIndex(y => y.in_id === x.in_id);
+      if (r && r.in_id && i >= 0) D.inbox[i] = r;
+      lsSet(DATA_STORE, JSON.stringify(D));
+      if (tab === 'home' && !document.getElementById('sheet').classList.contains('on')) {
+        const y = document.getElementById('app').scrollTop; render(); document.getElementById('app').scrollTop = y;
+      }
+      inboxPump();
+    }).catch(() => { delete inboxBusy[x.in_id]; });
+  });
+}
+function openInbox(id) {
+  const x = (D.inbox || []).find(y => y.in_id === id); if (!x) return;
+  if (x.status === 'new' || x.status === 'reading') return toast('กำลังอ่าน รอสักครู่');
+  S = x.status === 'ready' && x.data ? JSON.parse(JSON.stringify(x.data)) :
+    { error: x.err || 'อ่านไม่ได้', date: String(x.taken).slice(0, 10), shop: '', type: 'expense', total: 0, items: [] };
+  Object.assign(S, { inbox_id: id, photo_id: x.photo_id, pages: [], thumb: null });
+  if (!S.items || !S.items.length) S.items = [{ item: '', amount: S.total || '', cat_id: '' }];
+  S.items.forEach(it => { if (it.ruled) it.ruledCat = it.cat_id; });
+  if (!S.acc_id) S.acc_id = (accs().find(a => a.type === 'bank') || {}).acc_id || lastAcc();
+  renderSlip();
+  const pid = x.photo_id;
+  api('getPhoto', [pid, 0]).then(p => {
+    if (!S || S.photo_id !== pid) return;
+    S.thumb = p.b64; S.thumbMime = p.mime;
+    const box = document.getElementById('sThumb');
+    if (box) box.innerHTML = `<img class="photo" src="data:${p.mime};base64,${p.b64}" onclick="this.style.maxHeight=this.style.maxHeight?'':'none'"><p class="note" style="text-align:center;margin:4px 0 10px">แตะรูปเพื่อขยาย</p>`;
+  }).catch(() => {});
+}
+function nextInbox() {
+  const n = inboxList().find(x => x.status === 'ready' || x.status === 'error');
+  if (n) setTimeout(() => openInbox(n.in_id), 300);
+}
+function confirmSure() {
+  const ids = inboxList().filter(x => x.status === 'ready' && x.data && x.data.sure).map(x => x.in_id);
+  if (!ids.length) return;
+  if (!confirm('บันทึก ' + ids.length + ' ใบตามที่ AI อ่าน?')) return;
+  run('confirmInbox', [ids], 'กำลังบันทึก ' + ids.length + ' ใบ…', d => toast('บันทึกแล้ว ' + (d.confirmed || 0) + ' ใบ'));
+}
+
+// วิธีทำคำสั่งลัด (Claude สร้างใน iPhone ให้ไม่ได้ ผู้ใช้ทำเองทีละขั้น)
+function copyTxt(t, what) {
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('คัดลอก' + what + 'แล้ว'))
+    .catch(() => prompt('คัดลอกข้อความนี้', t));
+}
+function openKplus() {
+  const st = D.settings || {}, key = lsGet(KEY_STORE) || '';
+  const lastUrl = API_URL + '?fn=inboxLast&k=' + encodeURIComponent(key);
+  const cp = (label, val, what) => `<div class="row"><div class="grow"><div class="t2">${label}</div><div class="t1" style="font-size:13px">${esc(val.length > 46 ? val.slice(0, 46) + '…' : val)}</div></div>
+    <button class="btn sm" onclick="copyTxt(${esc(JSON.stringify(val))},'${what}')">คัดลอก</button></div>`;
+  const step = (n, t, body) => `<div class="kp"><div class="kp-n">${n}</div><div class="grow"><div class="kp-t">${t}</div><div class="kp-b">${body}</div></div></div>`;
+  const a = (th, en) => `<b>${th}</b> <span class="t2">(${en})</span>`;
+  const h = `<div class="alert info">K PLUS เก็บสลิปไว้ในอัลบั้ม "K PLUS" → คำสั่งลัดส่งรูปใหม่มาที่แอปนี้เอง → Gemini อ่านยอด/ผู้รับ/หมวด → ขึ้นการ์ด "สลิปใหม่ รอยืนยัน" ที่หน้าแรก<br>ทำครั้งเดียว ประมาณ 10 นาที</div>
+    <div class="sec"><h3>ค่าที่ต้องคัดลอกไปวาง</h3></div><div class="card">
+      ${cp('① ลิงก์ถามสลิปล่าสุด (ข้อ 1)', lastUrl, 'ลิงก์')}
+      ${cp('② ลิงก์ส่งสลิป (ข้อ 7)', API_URL, 'ลิงก์')}
+      ${cp('③ รหัสเข้าแอป (ช่อง k ข้อ 7)', key, 'รหัส')}</div>
+    <div class="sec"><h3>ก. สร้างคำสั่งลัด "ส่งสลิป K PLUS"</h3></div>
+    <div class="note" style="margin:-2px 2px 8px">แอปคำสั่งลัด → ＋ → ตั้งชื่อ "ส่งสลิป K PLUS" → เพิ่มการทำงานทีละข้อ (ค้นหาด้วยชื่อในวงเล็บได้)</div>
+    <div class="card" style="padding:4px 0">
+    ${step(1, a('รับเนื้อหาของ URL', 'Get Contents of URL'), 'วางลิงก์ ① · วิธี GET (ค่าเดิม)')}
+    ${step(2, a('รับวันที่จากข้อมูลเข้า', 'Get Dates from Input'), 'ข้อมูลเข้า = ผลจากข้อ 1')}
+    ${step(3, a('ค้นหารูปภาพ', 'Find Photos'), 'เพิ่มตัวกรอง: <b>อัลบั้ม คือ K PLUS</b> และ <b>วันที่ถ่าย อยู่ใน 45 วันล่าสุด</b><br>เรียงตาม <b>วันที่ถ่าย · เก่าสุดก่อน</b> · จำกัด <b>ปิด</b>')}
+    ${step(4, a('ทำซ้ำกับแต่ละรายการ', 'Repeat with Each'), 'ข้อมูลเข้า = รูปภาพจากข้อ 3 · ข้อ 5–7 อยู่<b>ข้างใน</b>วงทำซ้ำ')}
+    ${step(5, a('ถ้า', 'If'), 'ข้อมูลเข้า = <b>รายการที่ทำซ้ำ</b> → แตะแล้วเลือก <b>วันที่ถ่าย</b> · เงื่อนไข <b>อยู่หลัง</b> (is after) → วันที่จากข้อ 2<br>ข้อ 6–7 อยู่ใต้ "ถ้า" (ส่วน "มิฉะนั้น" ปล่อยว่าง)')}
+    ${step(6, a('แปลงรูปภาพ', 'Convert Image'), 'รายการที่ทำซ้ำ → <b>JPEG</b> · คุณภาพ ~70% · เก็บข้อมูลเมตา ปิด<br>ต่อด้วย ' + a('เข้ารหัส Base64', 'Base64 Encode') + ' ตัวแบ่งบรรทัด = <b>ไม่มี</b><br>ต่อด้วย ' + a('จัดรูปแบบวันที่', 'Format Date') + ' วันที่ = รายการที่ทำซ้ำ › วันที่ถ่าย · รูปแบบ <b>ISO 8601</b> เปิด "รวมเวลา"')}
+    ${step(7, a('รับเนื้อหาของ URL', 'Get Contents of URL'), 'วางลิงก์ ② · วิธี <b>POST</b> · เนื้อหาคำขอ <b>JSON</b> เพิ่ม 4 ช่อง (ข้อความทั้งหมด):<br><b>fn</b> = inboxSlip<br><b>k</b> = รหัส ③<br><b>img</b> = ผลเข้ารหัส Base64<br><b>taken</b> = วันที่ที่จัดรูปแบบ')}
+    </div>
+    <div class="note" style="margin:8px 2px">ลองกด ▶ รันในแอปคำสั่งลัด 1 ครั้ง (รอบแรกจะส่งสลิปย้อนหลังตั้งแต่วันที่ข้างล่าง อาจใช้ 1–3 นาที) แล้วเปิดแอปนี้ดูการ์ดที่หน้าแรก</div>
+    <div class="sec"><h3>ข. ให้ทำงานเอง (แท็บ "อัตโนมัติ")</h3></div><div class="card" style="padding:4px 0">
+    ${step('1', 'เมื่อปิดแอป K PLUS', 'อัตโนมัติ → ＋ → <b>แอป</b> → เลือก K PLUS · ติ๊ก <b>ถูกปิด</b> (ไม่ใช่ถูกเปิด) · <b>รันทันที</b> · ปิด "แจ้งเตือนเมื่อรัน" → เลือกคำสั่งลัด "ส่งสลิป K PLUS"')}
+    ${step('2', 'ตัวสำรอง ทุกวัน 21:00', 'อัตโนมัติ → ＋ → <b>เวลาของวัน</b> 21:00 ทุกวัน · <b>รันทันที</b> → คำสั่งลัดเดิม (เก็บตกตอนเน็ตหลุด)')}
+    </div>
+    <div class="sec"><h3>ส่งย้อนหลังตั้งแต่</h3></div><div class="card fcard">
+      ${fr('วันที่', `<input type="date" id="kpFrom" value="${esc(st.inboxFrom || '')}">`)}</div>
+    <div class="note" style="margin:6px 2px">ใช้กับรอบแรกเท่านั้น (ตอนยังไม่เคยรับสลิป) ${st.inboxCount ? '· <b>รับไปแล้ว ' + st.inboxCount + ' ใบ</b> เปลี่ยนตอนนี้ไม่มีผล' : ''}<br>
+      ⚠️ ยอดตั้งต้นบัญชีกสิกร = ยอดเงิน<b>ก่อน</b>วันนี้ (เช่น สิ้นวัน 31 ต.ค.) ไม่งั้นสลิปย้อนหลังจะหักซ้ำ</div>`;
+  openSheet('ส่งสลิป K PLUS อัตโนมัติ', h, st.inboxCount ? '' : `<button class="btn pri" onclick="run('setInboxFrom',[document.getElementById('kpFrom').value],'กำลังบันทึก…',()=>toast('บันทึกแล้ว'))">บันทึกวันที่</button>`);
 }
 
 // ---------- ดูบิล ----------

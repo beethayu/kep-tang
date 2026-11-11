@@ -1,11 +1,16 @@
 // ===== API สำหรับหน้าเว็บบน GitHub Pages (มีรหัสผ่าน) =====
 // ต้นฉบับอยู่ที่ GitHub beethayu/kep-tang โฟลเดอร์ gas/ — ห้ามแก้ในหน้า Apps Script ตรง ๆ (deploy อัตโนมัติจาก GitHub)
 // รหัสผ่านเก็บใน Script Properties: API_KEY (ตั้งครั้งแรกจากหน้าเว็บด้วย initSetup)
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 const API_BLOCK_ = ['doGet', 'doPost', 'authorizeAll'];
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
+  // คำสั่งลัด: ?fn=inboxLast&k=รหัส → ข้อความวันที่ล้วน (ไม่ต้องแกะ JSON ในคำสั่งลัด)
+  if (p.fn === 'inboxLast') {
+    if (!apiKey_() || String(p.k || '') !== apiKey_()) return ContentService.createTextOutput('AUTH');
+    return ContentService.createTextOutput(inboxLast());
+  }
   if (p.fn) {
     let args = [];
     try { args = p.args ? JSON.parse(p.args) : []; } catch (err) {}
@@ -21,7 +26,9 @@ function doPost(e) {
   } catch (err) {
     return apiOut_({ ok: false, error: 'ข้อมูลที่ส่งมาไม่ใช่ JSON' });
   }
-  return apiRun_(req.fn, req.args || [], req.k);
+  // คำสั่งลัด iPhone ส่งแบบช่องแบน {fn:'inboxSlip', k, img, taken} (สร้าง array ในคำสั่งลัดยาก)
+  const args = req.args || (req.fn === 'inboxSlip' ? [req.img, req.taken] : []);
+  return apiRun_(req.fn, args, req.k);
 }
 
 function apiKey_() {

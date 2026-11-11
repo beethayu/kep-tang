@@ -64,6 +64,20 @@ function readSlip(images, mime, opts) {
   mime = mime || 'image/jpeg';
   opts = opts || {};
   const today = today_();
+  const ids = (opts.photo_ids || []).slice();
+  const folder = slipFolder_();
+  for (let i = ids.length; i < pages.length; i++) {
+    ids.push(folder.createFile(Utilities.newBlob(Utilities.base64Decode(pages[i]), mime,
+      'สลิป_' + today + '_' + Date.now() + '_' + (i + 1) + '.jpg')).getId());
+  }
+  const photoIds = ids.join(',');
+
+  return readCore_(pages, mime, photoIds);
+}
+
+// อ่านรูป (base64) ที่เก็บใน Drive แล้ว → ข้อมูลให้ตรวจ (ใช้ทั้งถ่ายสลิปในแอป และกล่องสลิป K PLUS)
+function readCore_(pages, mime, photoIds) {
+  const today = today_();
   const accs = rows_(SH_.ACC).filter(a => !isTrue_(a.archived) && a.type !== 'farm');
   const cats = rows_(SH_.CAT).filter(c => !isTrue_(c.archived));
   const tx = rows_(SH_.TX);
@@ -79,14 +93,6 @@ function readSlip(images, mime, opts) {
       const best = Object.keys(shopCat[s]).sort((a, b) => shopCat[s][b] - shopCat[s][a])[0];
       return `- ${s} → ${catName(best)}`;
     }));
-
-  const ids = (opts.photo_ids || []).slice();
-  const folder = slipFolder_();
-  for (let i = ids.length; i < pages.length; i++) {
-    ids.push(folder.createFile(Utilities.newBlob(Utilities.base64Decode(pages[i]), mime,
-      'สลิป_' + today + '_' + Date.now() + '_' + (i + 1) + '.jpg')).getId());
-  }
-  const photoIds = ids.join(',');
 
   const prompt = `คุณอ่านสลิปโอนเงิน/ใบเสร็จ/สลิปบัตร ของคนไทยคนหนึ่ง เพื่อลงบัญชีรายรับรายจ่ายส่วนตัว ตอบเป็น JSON อย่างเดียว:
 {"kind":"slip|receipt|card|other","direction":"out|in","date":"yyyy-mm-dd (ค.ศ.)","time":"HH:MM","shop":"ร้าน/ผู้รับเงิน (หรือผู้โอนถ้าเป็นเงินเข้า)","bank":"ธนาคาร/แอปของบัญชีเรา","acct":"เลขบัญชีเรา 4 ตัวท้ายถ้ามี","account":"ชื่อบัญชีจากรายการด้านล่าง หรือ \"\"","ref":"เลขที่อ้างอิง/เลขที่รายการ","total":ยอดรวม,"farm":true/false,"items":[{"item":"ชื่อรายการ","amount":บาท,"category":"ชื่อหมวด"}]}

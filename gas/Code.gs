@@ -9,9 +9,10 @@ const SH_ = {
     'bill_id', 'photo_id', 'ref', 'recur_id', 'created_at'] },
   REC: { name: 'Recurring', head: ['rec_id', 'name', 'type', 'amount', 'acc_id', 'to_acc_id', 'cat_id', 'freq', 'day', 'next_date',
     'auto', 'active', 'note'] },
-  RULE: { name: 'Rules', head: ['key', 'name', 'cat_id', 'kind', 'hits', 'updated_at'] }  // จำหมวด (Rules.gs)
+  RULE: { name: 'Rules', head: ['key', 'name', 'cat_id', 'kind', 'hits', 'updated_at'] },  // จำหมวด (Rules.gs)
+  INBOX: { name: 'Inbox', head: ['in_id', 'taken', 'md5', 'photo_id', 'status', 'data', 'err', 'bill_id', 'created_at'] }  // สลิป K PLUS (Inbox.gs)
 };
-const TXT_COLS_ = ['date', 'next_date', 'ref', 'hint', 'key', 'name'];
+const TXT_COLS_ = ['date', 'next_date', 'ref', 'hint', 'key', 'name', 'taken'];
 
 const ACC_TYPES_ = ['cash', 'bank', 'card', 'ewallet', 'farm', 'other'];
 const DEFAULT_ACCS_ = [
@@ -158,9 +159,11 @@ function getAll() {
     tx: rows_(SH_.TX),
     recurring: rec,
     rules: rows_(SH_.RULE),
+    inbox: inboxPending_(),
     due: rec.filter(r => r.active !== false && String(r.active) !== 'FALSE' && !isTrue_(r.auto) && r.next_date && r.next_date <= t),
     autoPosted: posted,
-    settings: { gemini: !!props.getProperty('GEMINI_KEY'), raiKey: !!props.getProperty('RAI_KEY') }
+    settings: { gemini: !!props.getProperty('GEMINI_KEY'), raiKey: !!props.getProperty('RAI_KEY'), inboxFrom: inboxFrom_(),
+      inboxCount: rows_(SH_.INBOX).length }
   };
 }
 function isTrue_(x) { return x === true || String(x).toUpperCase() === 'TRUE' || x === 1 || x === '1'; }
@@ -202,6 +205,9 @@ function deleteTx(id) {
 // บิล/สลิปหลายบรรทัด: b = {bill_id?, date, acc_id, shop, ref, photo_id, note, farm, items:[{item, amount, cat_id, type}]}
 // farm = ค่าไร่ (สำรองจ่าย) → บันทึกเป็นโอนไปบัญชี "สำรองจ่ายไร่" ยอดเดียว ไม่นับเป็นรายจ่าย
 function saveBill(b) {
+  return withLock_(() => { const id = saveBillCore_(b); if (b.inbox_id) markInbox_(b.inbox_id, 'saved', { bill_id: id }); return getAll(); });
+}
+function saveBillCore_(b) {
   return withLock_(() => {
     const billId = b.bill_id || newId_('B');
     let created = nowStr_();
@@ -237,7 +243,7 @@ function saveBill(b) {
     if (!list.length) throw new Error('ไม่มีรายการที่มีจำนวนเงิน');
     appendMany_(SH_.TX, list);
     if (!b.farm) learnRule_(list);
-    return getAll();
+    return billId;
   });
 }
 
