@@ -1,7 +1,7 @@
 // ===== API สำหรับหน้าเว็บบน GitHub Pages (มีรหัสผ่าน) =====
 // ต้นฉบับอยู่ที่ GitHub beethayu/kep-tang โฟลเดอร์ gas/ — ห้ามแก้ในหน้า Apps Script ตรง ๆ (deploy อัตโนมัติจาก GitHub)
 // รหัสผ่านเก็บใน Script Properties: API_KEY (ตั้งครั้งแรกจากหน้าเว็บด้วย initSetup)
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 const API_BLOCK_ = ['doGet', 'doPost', 'authorizeAll'];
 
 function doGet(e) {

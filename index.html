@@ -294,6 +294,24 @@ const cats = (kind, all) => (D.categories || []).filter(c => (all || !isTrue(c.a
   .sort((a, b) => num(a.order) - num(b.order));
 const accOf = id => (D.accounts || []).find(a => a.acc_id === id) || { name: '?', type: 'other' };
 const catOf = id => (D.categories || []).find(c => c.cat_id === id) || { name: 'ไม่มีหมวด', icon: '❔' };
+// จำหมวด: เหมือน ruleKey_/findRule_ ใน gas/Rules.gs (แก้ต้องแก้ทั้งสองที่)
+function ruleKey(s) {
+  s = String(s || '').toLowerCase().trim();
+  s = s.replace(/^(นางสาว|น\.ส\.|ด\.ช\.|ด\.ญ\.)\s*/, '').replace(/^(นาย|นาง|mr|mrs|ms|miss)\.?\s+/, '');
+  s = s.replace(/บริษัท|บจก\.?|จำกัด|\(มหาชน\)|มหาชน|co\.?,?\s*ltd\.?/g, '');
+  s = s.replace(/x{2,}[\dx\-]*/g, '');
+  return s.replace(/[\s.,\-_/\\()'"*:;#&+]+/g, '');
+}
+function findRule(text, kind) {
+  const k = ruleKey(text);
+  if (!k) return null;
+  const list = (D.rules || []).filter(r => r.key && (r.kind === 'income') === (kind === 'income') && catOf(r.cat_id).cat_id && !isTrue(catOf(r.cat_id).archived));
+  const exact = list.find(r => String(r.key) === k);
+  if (exact) return exact;
+  if (k.length < 4) return null;
+  return list.filter(r => String(r.key).length >= 4 && (k.indexOf(r.key) >= 0 || String(r.key).indexOf(k) >= 0))
+    .sort((a, b) => String(b.key).length - String(a.key).length)[0] || null;
+}
 
 function balance(accId, until) {
   const a = accOf(accId);
@@ -570,6 +588,7 @@ function moreHtml() {
     <div class="sec"><h3>ข้อมูล</h3></div><div class="card">
       ${row('🏦', 'บัญชี', accs().length + ' บัญชี · เงินสด ธนาคาร บัตร', 'openAccounts()')}
       ${row('🏷️', 'หมวดหมู่และงบ', cats().length + ' หมวด', 'openCategories()')}
+      ${row('📌', 'หมวดที่จำไว้', (D.rules || []).length ? (D.rules || []).length + ' ร้าน/ชื่อ · เลือกหมวดให้เอง' : 'ยังไม่มี · บันทึกแล้วจะจำร้าน → หมวดให้', 'openRules()')}
       ${row('🔁', 'รายการประจำ', (D.recurring || []).length + ' รายการ', 'openRecurrings()')}
     </div>
     <div class="sec"><h3>ส่งออก</h3></div><div class="card">
@@ -630,7 +649,7 @@ function lastAcc() {
 }
 function openTx(id) {
   const t = (D.tx || []).find(x => x.tx_id === id); if (!t) return;
-  F = Object.assign({}, t, { amount: String(Math.abs(num(t.amount))), adjSign: num(t.amount) < 0 ? -1 : 1 });
+  F = Object.assign({}, t, { amount: String(Math.abs(num(t.amount))), adjSign: num(t.amount) < 0 ? -1 : 1, catTouched: t.cat_id ? 1 : 0 });
   renderTxForm('แก้รายการ', false);
 }
 function renderTxForm(title, isNew) {
@@ -649,7 +668,7 @@ function catsByUse(kind) {
 }
 function typeSeg(title, isNew, dark) {
   return `<div class="seg${dark ? ' seg-dk' : ''}">${[['expense', 'รายจ่าย'], ['income', 'รายรับ'], ['transfer', 'โอน/จ่ายบัตร']].map(x =>
-    `<button class="${F.type === x[0] ? 'on' : ''}" onclick="readForm();F.type='${x[0]}';F.cat_id='';catAll=false;renderTxForm('${title}',${isNew})">${x[1]}</button>`).join('')}</div>`;
+    `<button class="${F.type === x[0] ? 'on' : ''}" onclick="readForm();F.type='${x[0]}';F.cat_id='';F.catTouched=0;F.catRule='';catAll=false;renderTxForm('${title}',${isNew})">${x[1]}</button>`).join('')}</div>`;
 }
 function amtInput(dark) {
   return `<div class="amtbox${dark ? ' dk' : ''}"><span>฿</span><input id="fAmt" inputmode="decimal" placeholder="0" value="${esc(F.amount)}" autocomplete="off"></div>`;
@@ -668,7 +687,8 @@ function txFormHtml(title, isNew) {
     const more = list.length > 8 && !catAll;
     if (more) { const top = list.slice(0, 8); const sel = list.find(c => c.cat_id === F.cat_id); if (sel && top.indexOf(sel) < 0) top[7] = sel; list = top; }
     h += `<div class="flbl">หมวด</div><div class="cgrid">${list.map(c =>
-      `<button class="${F.cat_id === c.cat_id ? 'on' : ''}" onclick="readForm();F.cat_id='${c.cat_id}';renderTxForm('${title}',${isNew})"><span>${esc(c.icon || '📦')}</span><em>${esc(c.name)}</em></button>`).join('')}</div>
+      `<button class="${F.cat_id === c.cat_id ? 'on' : ''}" onclick="readForm();F.cat_id='${c.cat_id}';F.catTouched=1;F.catRule='';renderTxForm('${title}',${isNew})"><span>${esc(c.icon || '📦')}</span><em>${esc(c.name)}</em></button>`).join('')}</div>
+      ${F.catRule && F.cat_id ? `<p class="note" style="margin:6px 2px 0">📌 เลือก "${esc(catOf(F.cat_id).name)}" ให้ ตามที่เคยลง "${esc(F.catRule)}" · แตะหมวดอื่นได้</p>` : ''}
       ${cats(ty).length > 8 ? `<button class="more-btn" onclick="readForm();catAll=!catAll;renderTxForm('${title}',${isNew})">${catAll ? 'ย่อ ▴' : 'หมวดทั้งหมด (' + cats(ty).length + ') ▾'}</button>` : ''}`;
   }
   h += `<div class="flbl">${ty === 'transfer' ? 'จากบัญชี' : ty === 'income' ? 'เข้าบัญชี' : 'จ่ายจากบัญชี'}</div>${accChips('acc_id', title, isNew)}`;
@@ -676,11 +696,22 @@ function txFormHtml(title, isNew) {
     <div class="note" style="margin-top:6px">จ่ายบัตรเครดิต = ธนาคาร → บัตร · จ่ายค่าไร่ไปก่อน = → "สำรองจ่ายไร่" · ได้เงินเบิกคืน = "สำรองจ่ายไร่" → ธนาคาร</div>`;
   h += `<div class="flbl">รายละเอียด</div><div class="card fcard">
     <label class="frow"><span>วันที่</span><input type="date" id="fDate" value="${esc(F.date)}"></label>
-    <label class="frow"><span>${ty === 'transfer' ? 'รายการ' : 'รายการ/ร้าน'}</span><input id="fItem" value="${esc(F.item || F.shop || '')}" placeholder="ไม่ใส่ก็ได้"></label>
+    <label class="frow"><span>${ty === 'transfer' ? 'รายการ' : 'รายการ/ร้าน'}</span><input id="fItem" value="${esc(F.item || F.shop || '')}" placeholder="ไม่ใส่ก็ได้" onchange="itemChanged('${title}',${isNew})"></label>
     <label class="frow"><span>หมายเหตุ</span><input id="fNote" value="${esc(F.note)}" placeholder="ไม่ใส่ก็ได้"></label></div>`;
   if (F.photo_id) h += `<button class="btn full" style="margin-top:12px" onclick="showPhoto('${F.photo_id}')">📷 ดูรูปสลิป</button>`;
   const foot = (isNew ? '' : `<button class="btn red" style="flex:0 0 auto" onclick="delTx()">ลบ</button>`) + `<button class="btn pri" onclick="saveTxForm()">บันทึก</button>`;
   return { h, foot };
+}
+// พิมพ์ร้าน/รายการเสร็จ → ถ้าเคยลงชื่อนี้ เลือกหมวดให้ (ถ้ายังไม่ได้แตะหมวดเอง)
+function itemChanged(title, isNew) {
+  readForm();
+  if ((F.type !== 'expense' && F.type !== 'income') || F.catTouched) return;
+  const r = findRule(F.item, F.type);
+  if (!r || r.cat_id === F.cat_id) return;
+  F.cat_id = String(r.cat_id); F.catRule = r.name; catAll = false;
+  const y = document.getElementById('app').scrollTop;
+  renderTxForm(title, isNew);
+  document.getElementById('app').scrollTop = y;
 }
 function accChips(field, title, isNew) {
   return `<div class="chips">${accs().filter(a => field === 'to_acc_id' || F.type === 'transfer' || a.type !== 'farm').map(a =>
@@ -750,6 +781,7 @@ function readFiles(files, addMode) {
       busy(false);
       S = Object.assign(d, { pages, thumb: newPages[0] && !addMode ? newPages[0] : (S && S.thumb) });
       if (!S.items || !S.items.length) S.items = [{ item: '', amount: S.total || '', cat_id: '' }];
+      S.items.forEach(it => { if (it.ruled) it.ruledCat = it.cat_id; });
       if (!S.acc_id) S.acc_id = lastAcc();
       renderSlip();
     });
@@ -777,7 +809,8 @@ function renderSlip() {
     h += `<div class="it"><div class="r1"><input id="si_n${i}" value="${esc(it.item)}" placeholder="รายการ">
       <input class="a" id="si_a${i}" inputmode="decimal" value="${esc(it.amount)}" onchange="readSlipForm();renderSlip()"></div>
       ${S.farm ? '' : `<div class="r2"><select id="si_c${i}"><option value="">⚠️ เลือกหมวด ▾</option>${opts.map(c => `<option value="${c.cat_id}" ${it.cat_id === c.cat_id ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('')}</select><span class="t2" style="pointer-events:none">▾</span>
-      <button class="xbtn" onclick="readSlipForm();S.items.splice(${i},1);renderSlip()">✕</button></div>`}</div>`;
+      <button class="xbtn" onclick="readSlipForm();S.items.splice(${i},1);renderSlip()">✕</button></div>
+      ${it.ruled && it.cat_id === it.ruledCat ? `<div class="note" style="padding:0 14px 10px">📌 หมวดตามที่เคยลง "${esc(it.ruled)}"</div>` : ''}`}</div>`;
   });
   h += `<button class="btn full" style="margin-bottom:12px" onclick="readSlipForm();S.items.push({item:'',amount:'',cat_id:''});renderSlip()">＋ เพิ่มบรรทัด</button>`;
   const diff = S.total && Math.abs(sum - S.total) > 0.01;
@@ -924,6 +957,18 @@ function openCategories() {
     <div class="sec"><h3>รายรับ</h3></div><div class="card">${part('income')}</div>
     <p class="note">แตะหมวดเพื่อแก้ชื่อ ไอคอน งบรายเดือน · ↑ เลื่อนขึ้น (หมวดที่ใช้บ่อยไว้บน)</p>`;
   openSheet('หมวดหมู่และงบ', h, `<button class="btn pri" onclick="openCategory('')">＋ เพิ่มหมวด</button>`);
+}
+// ---------- หมวดที่จำไว้ ----------
+function openRules() {
+  const list = (D.rules || []).slice().sort((a, b) => String(a.updated_at) < String(b.updated_at) ? 1 : -1);
+  const h = list.length ? `<div class="card">${list.map(r => { const c = catOf(r.cat_id); return `<div class="row"><div class="ico">${esc(c.icon || '📦')}</div>
+    <div class="grow"><div class="t1">${esc(r.name)}</div><div class="t2">→ ${esc(c.name)}${num(r.hits) > 1 ? ' · ลงแล้ว ' + num(r.hits) + ' ครั้ง' : ''}</div></div>
+    <button class="xbtn" onclick="delRule('${esc(String(r.key)).replace(/'/g, '&#39;')}')">✕</button></div>`; }).join('')}</div>` :
+    `<div class="card" style="padding:16px"><div class="t1">ยังไม่มี</div><div class="t2">บันทึกรายการที่มีชื่อร้าน/ผู้รับ แอปจะจำหมวดไว้ ครั้งหน้าเลือกให้เอง</div></div>`;
+  openSheet('หมวดที่จำไว้', h + `<p class="note">บันทึก/แก้รายการ = จำหมวดล่าสุดของร้าน/ผู้รับนั้น (ใบเสร็จหลายหมวดไม่จำ) · ✕ = ลืม ครั้งหน้าให้ AI เดาเหมือนเดิม</p>`, '');
+}
+function delRule(key) {
+  run('deleteRule', [key], 'กำลังลบ…', () => openRules());
 }
 function moveCat(id, k) {
   const c = catOf(id), list = cats(c.kind, true).map(x => x.cat_id), i = list.indexOf(id);

@@ -67,14 +67,18 @@ function readSlip(images, mime, opts) {
   const accs = rows_(SH_.ACC).filter(a => !isTrue_(a.archived) && a.type !== 'farm');
   const cats = rows_(SH_.CAT).filter(c => !isTrue_(c.archived));
   const tx = rows_(SH_.TX);
-  // ร้านเดิม → หมวดที่เคยใช้บ่อย (ช่วย AI เดา)
+  // ร้านเดิม → หมวด: กฎที่จำจากการเลือก/แก้ ก่อน แล้วค่อยหมวดที่ใช้บ่อยจากรายการเก่า (ช่วย AI เดา)
+  const rules = rows_(SH_.RULE);
+  const catName = id => (cats.find(c => c.cat_id === id) || {}).name || '';
   const shopCat = {};
   tx.forEach(t => { if (t.shop && t.cat_id) { const k = t.shop; (shopCat[k] = shopCat[k] || {})[t.cat_id] = (shopCat[k][t.cat_id] || 0) + 1; } });
-  const catName = id => (cats.find(c => c.cat_id === id) || {}).name || '';
-  const shopHints = Object.keys(shopCat).slice(-60).map(s => {
-    const best = Object.keys(shopCat[s]).sort((a, b) => shopCat[s][b] - shopCat[s][a])[0];
-    return `- ${s} → ${catName(best)}`;
-  });
+  const seen = {};
+  const shopHints = rules.slice().sort((a, b) => String(b.updated_at) < String(a.updated_at) ? -1 : 1).slice(0, 80)
+    .filter(r => catName(r.cat_id)).map(r => { seen[r.key] = 1; return `- ${r.name} → ${catName(r.cat_id)}`; })
+    .concat(Object.keys(shopCat).filter(s => !seen[ruleKey_(s)]).slice(-40).map(s => {
+      const best = Object.keys(shopCat[s]).sort((a, b) => shopCat[s][b] - shopCat[s][a])[0];
+      return `- ${s} → ${catName(best)}`;
+    }));
 
   const ids = (opts.photo_ids || []).slice();
   const folder = slipFolder_();
@@ -141,6 +145,11 @@ farm = true ถ้าดูเป็นค่าใช้จ่ายไร่�
     pages: pages.length,
     ms: { ai: tAi, model: geminiUsed_ }
   };
+  // สลิปบรรทัดเดียว: ใช้หมวดที่เคยเลือกให้ร้าน/ผู้รับนี้ (แน่นอนกว่า AI เดา)
+  if (!out.farm && out.items.length === 1) {
+    const r = findRule_(rules, out.shop || out.items[0].item, kind);
+    if (r && cats.some(c => c.cat_id === r.cat_id)) { out.items[0].cat_id = String(r.cat_id); out.items[0].ruled = String(r.name); }
+  }
   // กันลงซ้ำ: เลขอ้างอิงเดิม หรือ วันเดียวกัน ยอดเดียวกัน ร้านเดียวกัน
   const dupe = tx.find(t => out.ref && t.ref && String(t.ref) === out.ref) ||
     tx.find(t => out.total && t.date === out.date && t.shop && t.shop === out.shop &&

@@ -8,9 +8,10 @@ const SH_ = {
   TX: { name: 'Transactions', head: ['tx_id', 'date', 'type', 'amount', 'acc_id', 'to_acc_id', 'cat_id', 'item', 'shop', 'note',
     'bill_id', 'photo_id', 'ref', 'recur_id', 'created_at'] },
   REC: { name: 'Recurring', head: ['rec_id', 'name', 'type', 'amount', 'acc_id', 'to_acc_id', 'cat_id', 'freq', 'day', 'next_date',
-    'auto', 'active', 'note'] }
+    'auto', 'active', 'note'] },
+  RULE: { name: 'Rules', head: ['key', 'name', 'cat_id', 'kind', 'hits', 'updated_at'] }  // จำหมวด (Rules.gs)
 };
-const TXT_COLS_ = ['date', 'next_date', 'ref', 'hint'];
+const TXT_COLS_ = ['date', 'next_date', 'ref', 'hint', 'key', 'name'];
 
 const ACC_TYPES_ = ['cash', 'bank', 'card', 'ewallet', 'farm', 'other'];
 const DEFAULT_ACCS_ = [
@@ -156,6 +157,7 @@ function getAll() {
     categories: rows_(SH_.CAT),
     tx: rows_(SH_.TX),
     recurring: rec,
+    rules: rows_(SH_.RULE),
     due: rec.filter(r => r.active !== false && String(r.active) !== 'FALSE' && !isTrue_(r.auto) && r.next_date && r.next_date <= t),
     autoPosted: posted,
     settings: { gemini: !!props.getProperty('GEMINI_KEY'), raiKey: !!props.getProperty('RAI_KEY') }
@@ -190,7 +192,7 @@ function cleanTx_(t) {
 }
 
 function saveTx(t) {
-  return withLock_(() => { upsert_(SH_.TX, cleanTx_(t)); return getAll(); });
+  return withLock_(() => { const o = cleanTx_(t); upsert_(SH_.TX, o); learnRule_([o]); return getAll(); });
 }
 
 function deleteTx(id) {
@@ -234,6 +236,7 @@ function saveBill(b) {
     }
     if (!list.length) throw new Error('ไม่มีรายการที่มีจำนวนเงิน');
     appendMany_(SH_.TX, list);
+    if (!b.farm) learnRule_(list);
     return getAll();
   });
 }
